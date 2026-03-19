@@ -14,6 +14,6 @@ itemRouter.get("/get-by-id/:itemId",isAuth,getItemById)
 itemRouter.get("/delete/:itemId",isAuth,deleteItem)
 itemRouter.get("/get-by-city/:city",isAuth,getItemByCity)
 itemRouter.get("/get-by-shop/:shopId",isAuth,getItemsByShop)
-itemRouter.get("/search-items",isAuth,searchItems)
+itemRouter.get("/search-items", searchItems)
 itemRouter.post("/rating",isAuth,rating)
 export default itemRouter

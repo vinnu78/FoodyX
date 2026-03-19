@@ -1,58 +1,126 @@
-import User from "./models/user.model.js"
+// socketHandler.js
+
+import User from "./models/user.model.js";
 
 export const socketHandler = (io) => {
-  io.on('connection', (socket) => {
-    console.log(socket.id)
-    socket.on('identity', async ({ userId }) => {
-      try {
-        const user = await User.findByIdAndUpdate(userId, {
-          socketId: socket.id, isOnline: true
-        }, { new: true })
-      } catch (error) {
-        console.log(error)
-      }
-    })
 
+  io.on("connection", (socket) => {
+    console.log(`✅ New socket connected: ${socket.id}`);
 
-    socket.on('updateLocation', async ({ latitude, longitude, userId }) => {
+    // ===============================
+    // 🔹 USER CONNECT (IDENTITY)
+    // ===============================
+    socket.on("identity", async ({ userId }) => {
       try {
-        const user = await User.findByIdAndUpdate(userId, {
-          location: {
-            type: 'Point',
-            coordinates: [longitude, latitude]
+        if (!userId) return;
+
+        const user = await User.findByIdAndUpdate(
+          userId,
+          {
+            socketId: socket.id,
+            isOnline: true,
           },
-          isOnline: true,
-          socketId: socket.id
-        })
+          { new: true }
+        );
+
+        console.log(`🟢 User ${userId} connected`);
+      } catch (error) {
+        console.error("❌ Identity error:", error);
+      }
+    });
+
+    // ===============================
+    // 🔹 LOCATION UPDATE (Delivery Boy)
+    // ===============================
+    socket.on("updateLocation", async ({ latitude, longitude, userId }) => {
+      try {
+        if (!userId || latitude == null || longitude == null) return;
+
+        const user = await User.findByIdAndUpdate(
+          userId,
+          {
+            location: {
+              type: "Point",
+              coordinates: [longitude, latitude],
+            },
+            socketId: socket.id,
+            isOnline: true,
+          },
+          { new: true }
+        );
 
         if (user) {
-          io.emit('updateDeliveryLocation',{
-            deliveryBoyId:userId,
+          // 🔥 ONLY send to specific room (better than broadcast)
+          io.emit("updateDeliveryLocation", {
+            deliveryBoyId: userId,
             latitude,
-            longitude
-          })
+            longitude,
+          });
+
+          console.log(`📍 Location updated: ${userId}`);
+        }
+      } catch (error) {
+        console.error("❌ Location update error:", error);
+      }
+    });
+
+    // ===============================
+    // 🔹 NEW ORDER EVENT (IMPORTANT)
+    // ===============================
+    socket.on("newOrder", async (orderData) => {
+      try {
+        // 👉 send to owner
+        if (orderData?.ownerSocketId) {
+          io.to(orderData.ownerSocketId).emit("newOrder", orderData);
         }
 
+        // 👉 send to delivery boy (optional)
+        if (orderData?.deliverySocketId) {
+          io.to(orderData.deliverySocketId).emit("newOrder", orderData);
+        }
 
+        console.log("🛒 New order emitted");
       } catch (error) {
-          console.log('updateDeliveryLocation error')
+        console.error("❌ New order error:", error);
       }
-    })
+    });
 
-
-
-
-    socket.on('disconnect', async () => {
+    // ===============================
+    // 🔹 ORDER STATUS UPDATE
+    // ===============================
+    socket.on("updateStatus", ({ orderId, status, userSocketId }) => {
       try {
+        if (userSocketId) {
+          io.to(userSocketId).emit("update-status", {
+            orderId,
+            status,
+          });
+        }
 
-        await User.findOneAndUpdate({ socketId: socket.id }, {
-          socketId: null,
-          isOnline: false
-        })
+        console.log(`🔄 Order status updated: ${orderId}`);
       } catch (error) {
-        console.log(error)
+        console.error("❌ Status update error:", error);
       }
+    });
 
-    })
-  })
-}
+    // ===============================
+    // 🔹 DISCONNECT
+    // ===============================
+    socket.on("disconnect", async () => {
+      try {
+        await User.findOneAndUpdate(
+          { socketId: socket.id },
+          {
+            socketId: null,
+            isOnline: false,
+          }
+        );
+
+        console.log(`🔴 Socket disconnected: ${socket.id}`);
+      } catch (error) {
+        console.error("❌ Disconnect error:", error);
+      }
+    });
+
+  });
+};
