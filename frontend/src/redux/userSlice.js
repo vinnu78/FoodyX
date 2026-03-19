@@ -2,6 +2,7 @@ import { createSlice } from "@reduxjs/toolkit";
 
 const userSlice = createSlice({
   name: "user",
+
   initialState: {
     userData: null,
     currentCity: null,
@@ -13,10 +14,11 @@ const userSlice = createSlice({
     totalAmount: 0,
     myOrders: [],
     searchItems: null,
-    socket: null   // ✅ socket add
+    socket: null
   },
 
   reducers: {
+
     setUserData: (state, action) => {
       state.userData = action.payload;
     },
@@ -41,38 +43,52 @@ const userSlice = createSlice({
       state.itemsInMyCity = action.payload;
     },
 
-    // ✅ SOCKET FIX
+    // SOCKET SAFE STORAGE
     setSocket: (state, action) => {
-      state.socket = action.payload;
-    },
+      const socket = action.payload;
 
-    addToCart: (state, action) => {
-      const cartItem = action.payload;
-
-      const existingItem = state.cartItems.find(
-        (i) => i.id == cartItem.id
-      );
-
-      if (existingItem) {
-        existingItem.quantity += cartItem.quantity;
+      if (socket) {
+        state.socket = {
+          connected: socket.connected,
+          id: socket.id
+        };
       } else {
-        state.cartItems.push(cartItem);
+        state.socket = null;
       }
-
-      state.totalAmount = state.cartItems.reduce(
-        (sum, i) => sum + i.price * i.quantity,
-        0
-      );
     },
 
-    setTotalAmount: (state, action) => {
-      state.totalAmount = action.payload;
-    },
+    // CART FUNCTIONS
+  addToCart: (state, action) => {
+  const cartItem = action.payload;
+
+  // Ensure shop is always string ObjectId
+  const shopId = typeof cartItem.shop === "object" ? cartItem.shop._id : cartItem.shop;
+
+  const itemToAdd = { ...cartItem, shop: shopId };
+
+  const existingItem = state.cartItems.find(
+    (i) => i.id === itemToAdd.id
+  );
+
+  if (existingItem) {
+    existingItem.quantity += itemToAdd.quantity;
+  } else {
+    state.cartItems.push(itemToAdd);
+  }
+
+  state.totalAmount = state.cartItems.reduce(
+    (sum, i) => sum + i.price * i.quantity,
+    0
+  );
+},
 
     updateQuantity: (state, action) => {
+
       const { id, quantity } = action.payload;
 
-      const item = state.cartItems.find((i) => i.id == id);
+      const item = state.cartItems.find(
+        (i) => i.id === id
+      );
 
       if (item) {
         item.quantity = quantity;
@@ -85,6 +101,7 @@ const userSlice = createSlice({
     },
 
     removeCartItem: (state, action) => {
+
       state.cartItems = state.cartItems.filter(
         (i) => i.id !== action.payload
       );
@@ -95,6 +112,11 @@ const userSlice = createSlice({
       );
     },
 
+    setTotalAmount: (state, action) => {
+      state.totalAmount = action.payload;
+    },
+
+    // ORDERS
     setMyOrders: (state, action) => {
       state.myOrders = action.payload;
     },
@@ -103,45 +125,75 @@ const userSlice = createSlice({
       state.myOrders = [action.payload, ...state.myOrders];
     },
 
+    // FIXED ORDER STATUS UPDATE
     updateOrderStatus: (state, action) => {
+
       const { orderId, shopId, status } = action.payload;
 
       const order = state.myOrders.find(
-        (o) => o._id == orderId
+        (o) => o._id === orderId
       );
 
-      if (order) {
-        if (
-          order.shopOrders &&
-          order.shopOrders.shop._id == shopId
-        ) {
-          order.shopOrders.status = status;
-        }
-      }
-    },
+      if (!order) return;
 
-    updateRealtimeOrderStatus: (state, action) => {
-      const { orderId, shopId, status } = action.payload;
+      // case 1: shopOrders array
+      if (Array.isArray(order.shopOrders)) {
 
-      const order = state.myOrders.find(
-        (o) => o._id == orderId
-      );
-
-      if (order) {
         const shopOrder = order.shopOrders.find(
-          (so) => so.shop._id == shopId
+          (so) => so?.shop?._id === shopId
         );
 
         if (shopOrder) {
           shopOrder.status = status;
         }
+
       }
+
+      // case 2: single shopOrder object
+      else if (order.shopOrder && order.shopOrder?.shop?._id === shopId) {
+
+        order.shopOrder.status = status;
+
+      }
+
+    },
+
+    updateRealtimeOrderStatus: (state, action) => {
+
+      const { orderId, shopId, status } = action.payload;
+
+      const order = state.myOrders.find(
+        (o) => o._id === orderId
+      );
+
+      if (!order) return;
+
+      if (Array.isArray(order.shopOrders)) {
+
+        const shopOrder = order.shopOrders.find(
+          (so) => so?.shop?._id === shopId
+        );
+
+        if (shopOrder) {
+          shopOrder.status = status;
+        }
+
+      }
+
+      else if (order.shopOrder && order.shopOrder?.shop?._id === shopId) {
+
+        order.shopOrder.status = status;
+
+      }
+
     },
 
     setSearchItems: (state, action) => {
       state.searchItems = action.payload;
     }
+
   }
+
 });
 
 export const {
@@ -160,7 +212,7 @@ export const {
   updateRealtimeOrderStatus,
   setSearchItems,
   setTotalAmount,
-  setSocket   // ✅ export IMPORTANT
+  setSocket
 } = userSlice.actions;
 
 export default userSlice.reducer;

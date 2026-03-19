@@ -1,29 +1,65 @@
-import axios from 'axios'
-import React, { useEffect } from 'react'
-import { serverUrl } from '../App'
-import { useDispatch, useSelector } from 'react-redux'
-import {  setCurrentAddress, setCurrentCity, setCurrentState, setUserData } from '../redux/userSlice'
-import { setAddress, setLocation } from '../redux/mapSlice'
+import axios from "axios";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { setCurrentCity } from "../redux/userSlice";
 
 function useGetCity() {
-    const dispatch=useDispatch()
-    const {userData}=useSelector(state=>state.user)
-    const apiKey=import.meta.env.VITE_GEOAPIKEY
-    useEffect(()=>{
-navigator.geolocation.getCurrentPosition(async (position)=>{
-    console.log(position)
-    const latitude=position.coords.latitude
-    const longitude=position.coords.longitude
-    dispatch(setLocation({lat:latitude,lon:longitude}))
-    const result=await axios.get(`https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`)
-  console.log(result.data)
-    dispatch(setCurrentCity(result?.data?.results[0].city||result?.data?.results[0].county
-))
-    dispatch(setCurrentState(result?.data?.results[0].state))
-     dispatch(setCurrentAddress(result?.data?.results[0].address_line2 || result?.data?.results[0].address_line1 ))
-  dispatch(setAddress(result?.data?.results[0].address_line2))
-})
-    },[userData])
+  const dispatch = useDispatch();
+  const apiKey = import.meta.env.VITE_GEOAPIKEY;
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      console.log("Geolocation not supported");
+      dispatch(setCurrentCity("Unknown"));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        // ✅ Dev override for coordinates
+        const lat = import.meta.env.VITE_DEV_LAT || pos.coords.latitude;
+        const lon = import.meta.env.VITE_DEV_LON || pos.coords.longitude;
+
+        console.log("GPS:", lat, lon);
+
+        try {
+          const res = await axios.get(
+            `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lon}&apiKey=${apiKey}`
+          );
+
+          const props = res.data.features?.[0]?.properties;
+
+          if (!props) {
+            console.log("No Geoapify properties found");
+            dispatch(setCurrentCity("Unknown"));
+            return;
+          }
+
+          // ✅ Detect city with multiple fallbacks
+          const detectedCity =
+            props.city ||
+            props.town ||
+            props.village ||
+            props.county ||
+            props.state;
+
+          // ✅ Dev override for city
+          const city = import.meta.env.VITE_DEV_CITY || detectedCity;
+
+          console.log("Detected city:", city);
+          dispatch(setCurrentCity(city || "Unknown"));
+        } catch (error) {
+          console.log("Geoapify error:", error);
+          dispatch(setCurrentCity("Unknown"));
+        }
+      },
+      (err) => {
+        console.log("Geolocation error:", err);
+        dispatch(setCurrentCity("Unknown"));
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [dispatch, apiKey]);
 }
 
-export default useGetCity
+export default useGetCity;

@@ -1,20 +1,25 @@
-// Import the functions you need from the SDKs you need
+// Import the functions you need from the SDKs
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey:import.meta.env.VITE_FIREBASE_APIKEY,
-  authDomain: "vingo-food-delivery.firebaseapp.com",
-  projectId: "vingo-food-delivery",
-  storageBucket: "vingo-food-delivery.firebasestorage.app",
-  messagingSenderId: "693314883513",
-  appId: "1:693314883513:web:4840c943ecf3fb61a33068"
+  apiKey: import.meta.env.VITE_FIREBASE_APIKEY, // from .env
+  authDomain: "foodyx-c660c.firebaseapp.com",
+  projectId: "foodyx-c660c",
+  storageBucket: "foodyx-c660c.firebasestorage.app",
+  messagingSenderId: "819197441045",
+  appId: "1:819197441045:web:68022a07bb7340a42aca1c",
+  measurementId: "G-8P7K0Q3QQM"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const auth=getAuth(app)
-export {app,auth}
+
+// Initialize Firebase services
+const auth = getAuth(app);       // Authentication
+const analytics = getAnalytics(app); // Analytics (optional)
+
+// Export the initialized services
+export { app, auth, analytics };
