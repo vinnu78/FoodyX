@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# environment variables
+.env
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+
+# editor files
+.vscode/
+.idea/
+
+# build files (agar future me use kare)
+dist/
+build/
