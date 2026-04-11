@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js"
-  },
-  "author": "Virtual code",
+  "dev": "nodemon index.js",
+  "start": "node index.js"
+},
+  "author": "Vinita Kumari",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^3.0.2",
