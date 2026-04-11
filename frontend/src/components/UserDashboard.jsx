@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import Nav from './NaV.JSX'
+import Nav from './Nav'
 import Footer from './Footer'
 import { categories } from '../category'
 import CategoryCard from './CategoryCard'
